@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Relógio Digital</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --fg:#e6edf3;
+      --muted:#9fb0c3;
+      --accent:#7cdd5c;
+      --glow: 0 0 22px rgba(124,221,92,.35);
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f7f9fc; --fg:#0d1321; --muted:#62748a; --accent:#1e90ff; --glow:0 0 16px rgba(30,144,255,.25); }
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      margin:0;
+      background:radial-gradient(1200px 800px at 20% -10%, rgba(124,221,92,.08), transparent 60%),
+                 radial-gradient(1000px 700px at 120% 120%, rgba(30,144,255,.08), transparent 60%),
+                 var(--bg);
+      color:var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+
+    .card{
+      width:min(720px, 95vw);
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      backdrop-filter: blur(6px);
+      border-radius:24px;
+      padding:28px 28px 22px;
+      box-shadow:
+        0 20px 40px rgba(0,0,0,.35),
+        inset 0 0 0 1px rgba(255,255,255,.04);
+      text-align:center;
+    }
+
+    .time{
+      font-size: clamp(44px, 9vw, 110px);
+      letter-spacing: .06em;
+      line-height:1;
+      margin: 4px 0 12px;
+      text-shadow: var(--glow);
+    }
+
+    .seconds{
+      font-size: .36em;
+      opacity:.9;
+      vertical-align: baseline;
+      margin-left:.15em;
+    }
+
+    .date{
+      font-size: clamp(14px, 2.6vw, 18px);
+      color: var(--muted);
+      letter-spacing:.06em;
+      text-transform: uppercase;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      align-items:center;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.03);
+      color:var(--fg);
+      padding:10px 14px;
+      border-radius:999px;
+      font-size:14px;
+      cursor: pointer;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .pill[aria-pressed="true"]{
+      border-color: rgba(124,221,92,.45);
+      background: rgba(124,221,92,.10);
+      box-shadow: var(--glow);
+    }
+    .pill:active{ transform: scale(.98) }
+    .tz{
+      color: var(--muted);
+      border:1px dashed rgba(255,255,255,.18);
+      background: transparent;
+      cursor: default;
+    }
+
+    footer{
+      margin-top:16px;
+      font-size:12px;
+      color:var(--muted);
+      opacity:.9;
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="group" aria-label="Relógio digital">
+    <div class="date" id="date" aria-live="polite">—</div>
+    <div class="time" id="time" aria-live="polite" aria-atomic="true">00:00<span class="seconds">00</span></div>
+
+    <div class="row">
+      <button id="toggleFormat" class="pill" type="button" aria-pressed="false" title="Alternar 24h/12h">
+        Formato 24h
+      </button>
+      <button id="toggleSeconds" class="pill" type="button" aria-pressed="true" title="Mostrar/ocultar segundos">
+        Segundos: On
+      </button>
+      <span class="pill tz" id="tz" title="Fuso horário atual">—</span>
+    </div>
+
+    <footer id="foot">—</footer>
+  </main>
+
+  <!-- ÚNICO MÓDULO -->
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const elTime = $('time');
+    const elDate = $('date');
+    const elTz = $('tz');
+    const btnFormat = $('toggleFormat');
+    const btnSeconds = $('toggleSeconds');
+    const foot = $('foot');
+
+    // estado do módulo
+    let showSeconds = true;
+    let is24h = true;
+
+    // detectar locale e timezone do usuário
+    const locale = navigator.language || 'pt-BR';
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    elTz.textContent = timeZone.replace('_',' ');
+    foot.textContent = `Atualiza em tempo real • Locale: ${locale}`;
+
+    const pad2 = (n) => String(n).padStart(2,'0');
+
+    function formatNow() {
+      const now = new Date();
+
+      // data (ex.: qua, 15 de outubro de 2025)
+      const dateStr = new Intl.DateTimeFormat(locale, {
+        weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', timeZone
+      }).format(now);
+      elDate.textContent = dateStr;
+
+      // hora
+      let h = now.getHours();
+      let suffix = '';
+      if (!is24h) {
+        suffix = h >= 12 ? ' PM' : ' AM';
+        h = h % 12 || 12;
+      }
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+
+      // contrói DOM sem reflow grande
+      const base = `${pad2(h)}:${pad2(m)}`;
+      const secondsSpan = showSeconds ? `<span class="seconds">${pad2(s)}</span>` : '';
+      elTime.innerHTML = base + secondsSpan + (is24h ? '' : suffix);
+    }
+
+    // atualizador: evita drift usando setInterval de 250ms e sincroniza no segundo
+    function startTicker() {
+      // sincroniza para trocar exato no início do próximo segundo
+      const sync = 1000 - (Date.now() % 1000);
+      setTimeout(() => {
+        formatNow();
+        setInterval(formatNow, 1000);
+      }, sync);
+      formatNow();
+    }
+
+    // listeners
+    btnFormat.addEventListener('click', () => {
+      is24h = !is24h;
+      btnFormat.setAttribute('aria-pressed', String(!is24h));
+      btnFormat.textContent = is24h ? 'Formato 24h' : 'Formato 12h';
+      formatNow();
+    });
+
+    btnSeconds.addEventListener('click', () => {
+      showSeconds = !showSeconds;
+      btnSeconds.setAttribute('aria-pressed', String(showSeconds));
+      btnSeconds.textContent = `Segundos: ${showSeconds ? 'On' : 'Off'}`;
+      formatNow();
+    });
+
+    // inicia
+    startTicker();
+  </script>
+</body>
+</html>
