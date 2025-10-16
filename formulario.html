@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formulário de Contato</title>
+  <style>
+    :root{--bg:#f7f8fb;--card:#ffffff;--accent:#2563eb;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;line-height:1.4;margin:0;background:var(--bg);color:#111}
+    .container{max-width:760px;margin:40px auto;padding:20px}
+    .card{background:var(--card);border-radius:12px;box-shadow:0 6px 18px rgba(16,24,40,0.06);padding:28px}
+    h1{margin:0 0 8px;font-size:1.4rem}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .full{grid-column:1/-1}
+    label{display:block;font-size:0.9rem;margin-bottom:6px}
+    input[type="text"],input[type="email"],input[type="tel"],textarea,select{
+      width:100%;padding:10px 12px;border:1px solid #e6e9ef;border-radius:8px;font-size:0.95rem}
+    textarea{min-height:140px;resize:vertical}
+    .row{display:flex;gap:8px}
+    .actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;grid-column:1/-1}
+    button{background:var(--accent);color:white;border:0;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    button[disabled]{opacity:0.6;cursor:not-allowed}
+    .secondary{background:transparent;color:var(--muted);border:1px solid #e6e9ef}
+    .hint{font-size:0.85rem;color:var(--muted)}
+    .success{background:#ecfdf5;border:1px solid #bbf7d0;color:#064e3b;padding:10px;border-radius:8px;margin-top:12px}
+    .error{background:#fff1f2;border:1px solid #fecaca;color:#7f1d1d;padding:10px;border-radius:8px;margin-top:12px}
+    @media (max-width:640px){form{grid-template-columns:1fr} .actions{flex-direction:column;gap:8px;align-items:stretch}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" role="region" aria-labelledby="contato-title">
+      <h1 id="contato-title">Fale conosco</h1>
+      <p class="lead">Tem alguma dúvida, sugestão ou proposta? Envie uma mensagem — responderemos em até 48 horas.</p>
+
+      <form id="contactForm" novalidate>
+        <div>
+          <label for="nome">Nome</label>
+          <input id="nome" name="nome" type="text" autocomplete="name" required minlength="2" placeholder="Seu nome completo">
+        </div>
+
+        <div>
+          <label for="email">E‑mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" required placeholder="seu@exemplo.com">
+        </div>
+
+        <div>
+          <label for="telefone">Telefone (opcional)</label>
+          <input id="telefone" name="telefone" type="tel" autocomplete="tel" pattern="[0-9+ ()-]{8,}" placeholder="(00) 9 9999-9999">
+        </div>
+
+        <div>
+          <label for="assunto">Assunto</label>
+          <select id="assunto" name="assunto" required>
+            <option value="">-- selecione --</option>
+            <option>Suporte</option>
+            <option>Vendas</option>
+            <option>Parcerias</option>
+            <option>Outro</option>
+          </select>
+        </div>
+
+        <div class="full">
+          <label for="mensagem">Mensagem</label>
+          <textarea id="mensagem" name="mensagem" required minlength="10" placeholder="Escreva sua mensagem aqui..."></textarea>
+        </div>
+
+        <div class="actions">
+          <div class="hint">Ao enviar você concorda com nossos <a href="#">termos</a>.</div>
+          <div style="display:flex;gap:8px">
+            <button type="reset" class="secondary" id="btnReset">Limpar</button>
+            <button type="submit" id="btnSubmit">Enviar mensagem</button>
+          </div>
+        </div>
+
+        <div id="formFeedback" aria-live="polite" class="full" style="display:none"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('contactForm');
+    const feedback = document.getElementById('formFeedback');
+    const submitBtn = document.getElementById('btnSubmit');
+
+    function showMessage(type, text){
+      feedback.style.display = 'block';
+      feedback.className = type === 'success' ? 'success full' : 'error full';
+      feedback.textContent = text;
+    }
+
+    function clearMessage(){
+      feedback.style.display = 'none';
+      feedback.textContent = '';
+      feedback.className = '';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      if (!form.checkValidity()){
+        // show browser validation UI and a friendly message
+        form.reportValidity();
+        showMessage('error', 'Por favor, corrija os campos em destaque.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+
+      const data = {
+        nome: form.nome.value.trim(),
+        email: form.email.value.trim(),
+        telefone: form.telefone.value.trim(),
+        assunto: form.assunto.value,
+        mensagem: form.mensagem.value.trim(),
+      };
+
+      try{
+        // Exemplo: envio para uma API. Troque a URL abaixo pela sua.
+        // const res = await fetch('https://sua-api.com/contato', {
+        //   method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+        // });
+        // const result = await res.json();
+
+        // Simulação de sucesso (remova quando integrar a API real)
+        await new Promise(r => setTimeout(r, 700));
+        showMessage('success', 'Mensagem enviada com sucesso! Obrigado por entrar em contato.');
+        form.reset();
+      }catch(err){
+        console.error(err);
+        showMessage('error', 'Ocorreu um erro ao enviar. Tente novamente mais tarde.');
+      }finally{
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar mensagem';
+      }
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      clearMessage();
+    });
+  </script>
+</body>
+</html>
