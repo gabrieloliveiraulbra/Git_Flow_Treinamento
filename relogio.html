@@ -12,8 +12,12 @@
       --accent:#7cdd5c;
       --glow: 0 0 22px rgba(124,221,92,.35);
     }
-    @media (prefers-color-scheme: light){
-      :root{ --bg:#f7f9fc; --fg:#0d1321; --muted:#62748a; --accent:#1e90ff; --glow:0 0 16px rgba(30,144,255,.25); }
+    html[data-theme='light']{
+      --bg:#f7f9fc;
+      --fg:#0d1321;
+      --muted:#62748a;
+      --accent:#1e90ff;
+      --glow:0 0 16px rgba(30,144,255,.25);
     }
 
     *{ box-sizing:border-box }
@@ -24,10 +28,11 @@
                  radial-gradient(1000px 700px at 120% 120%, rgba(30,144,255,.08), transparent 60%),
                  var(--bg);
       color:var(--fg);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       display:grid;
       place-items:center;
       padding:24px;
+      transition: background 0.5s, color 0.5s;
     }
 
     .card{
@@ -41,6 +46,7 @@
         0 20px 40px rgba(0,0,0,.35),
         inset 0 0 0 1px rgba(255,255,255,.04);
       text-align:center;
+      transition: background 0.5s, box-shadow 0.5s;
     }
 
     .time{
@@ -107,24 +113,20 @@
   </style>
 </head>
 <body>
-  <main class="card" role="group" aria-label="Relógio digital">
-    <div class="date" id="date" aria-live="polite">—</div>
-    <div class="time" id="time" aria-live="polite" aria-atomic="true">00:00<span class="seconds">00</span></div>
+  <main class="card">
+    <div class="date" id="date">—</div>
+    <div class="time" id="time">00:00<span class="seconds">00</span></div>
 
     <div class="row">
-      <button id="toggleFormat" class="pill" type="button" aria-pressed="false" title="Alternar 24h/12h">
-        Formato 24h
-      </button>
-      <button id="toggleSeconds" class="pill" type="button" aria-pressed="true" title="Mostrar/ocultar segundos">
-        Segundos: On
-      </button>
-      <span class="pill tz" id="tz" title="Fuso horário atual">—</span>
+      <button id="toggleFormat" class="pill" type="button" aria-pressed="false">Formato 24h</button>
+      <button id="toggleSeconds" class="pill" type="button" aria-pressed="true">Segundos: On</button>
+      <button id="toggleTheme" class="pill" type="button">🌙 Tema</button>
+      <span class="pill tz" id="tz">—</span>
     </div>
 
     <footer id="foot">—</footer>
   </main>
 
-  <!-- ÚNICO MÓDULO -->
   <script type="module">
     const $ = (id) => document.getElementById(id);
     const elTime = $('time');
@@ -132,13 +134,31 @@
     const elTz = $('tz');
     const btnFormat = $('toggleFormat');
     const btnSeconds = $('toggleSeconds');
+    const btnTheme = $('toggleTheme');
     const foot = $('foot');
 
-    // estado do módulo
     let showSeconds = true;
     let is24h = true;
 
-    // detectar locale e timezone do usuário
+    // Tema inicial: carrega do localStorage ou usa preferido do sistema
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme');
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    document.documentElement.dataset.theme = theme;
+    updateThemeButton(theme);
+
+    function updateThemeButton(current) {
+      btnTheme.textContent = current === 'dark' ? '☀️ Tema' : '🌙 Tema';
+    }
+
+    btnTheme.addEventListener('click', () => {
+      const current = document.documentElement.dataset.theme;
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    });
+
     const locale = navigator.language || 'pt-BR';
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     elTz.textContent = timeZone.replace('_',' ');
@@ -149,13 +169,11 @@
     function formatNow() {
       const now = new Date();
 
-      // data (ex.: qua, 15 de outubro de 2025)
       const dateStr = new Intl.DateTimeFormat(locale, {
         weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', timeZone
       }).format(now);
       elDate.textContent = dateStr;
 
-      // hora
       let h = now.getHours();
       let suffix = '';
       if (!is24h) {
@@ -165,15 +183,12 @@
       const m = now.getMinutes();
       const s = now.getSeconds();
 
-      // contrói DOM sem reflow grande
       const base = `${pad2(h)}:${pad2(m)}`;
       const secondsSpan = showSeconds ? `<span class="seconds">${pad2(s)}</span>` : '';
       elTime.innerHTML = base + secondsSpan + (is24h ? '' : suffix);
     }
 
-    // atualizador: evita drift usando setInterval de 250ms e sincroniza no segundo
     function startTicker() {
-      // sincroniza para trocar exato no início do próximo segundo
       const sync = 1000 - (Date.now() % 1000);
       setTimeout(() => {
         formatNow();
@@ -182,7 +197,6 @@
       formatNow();
     }
 
-    // listeners
     btnFormat.addEventListener('click', () => {
       is24h = !is24h;
       btnFormat.setAttribute('aria-pressed', String(!is24h));
@@ -197,7 +211,6 @@
       formatNow();
     });
 
-    // inicia
     startTicker();
   </script>
 </body>
